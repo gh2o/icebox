@@ -1,3 +1,5 @@
+ENTRY(kernel_entry)
+
 SECTIONS {
 
 	kernel_start = 0xffffffffc0000000;
