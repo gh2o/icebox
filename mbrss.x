@@ -22,12 +22,11 @@ SECTIONS {
 	. = ss_start;
 	.ss_stub : { KEEP(*(.text.ss)) }
 
-	ss_hdr_size = ss_start + 16;
-	ss_hdr_szinv = ss_start + 20;
-
-	. = ss_hdr_size;
+	. = ss_start + 16;
 	.ss_meta : {
+		ss_hdr_size = .;
 		LONG(ss_end - mbr_start)
+		ss_hdr_szinv = .;
 		LONG(~(ss_end - mbr_start))
 	}
 
