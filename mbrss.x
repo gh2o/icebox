@@ -8,7 +8,12 @@ SECTIONS {
 
 	. = mbr_start + 0x1BE;
 	.partition_table : {
+		partition_table_start = .;
 		LONG(0)
+		LONG(0)
+		LONG(0)
+		LONG(0)
+		partition_table_end = partition_table_start + 64;
 	}
 
 	. = mbr_start + 0x1FE;
