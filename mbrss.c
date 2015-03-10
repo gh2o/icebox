@@ -156,6 +156,7 @@ static void vga_putuint64(uint64_t val) {
 	vga_puts(ptr);
 }
 
+__attribute__((noreturn))
 static void halt_forever() {
 	vga_puts("Finished.\n");
 	while (true)
@@ -192,6 +193,18 @@ static void enable_a20() {
 	}
 }
 
+static void maximal_offset(const void *addr, uint16_t *es, uint32_t *reg) {
+	uint32_t val = (uint32_t)addr;
+	uint32_t seg = val >> 4;
+	uint32_t off = val & 0x0F;
+	if (seg > 0xFFFF) {
+		vga_puts("Pointer to real mode over 1MB!\n");
+		halt_forever();
+	}
+	*es = seg;
+	*reg = off;
+}
+
 void ss_entry() {
 
 	// zero out BSS variables
@@ -211,7 +224,7 @@ void ss_entry() {
 		regset.eax = 0xe820;
 		regset.ecx = 20;
 		regset.edx = 0x534d4150;
-		regset.edi = (uint32_t)&smap_entry;
+		maximal_offset(&smap_entry, &regset.es, &regset.edi);
 		bios_call_service(0x15, &regset);
 		if (regset.eax == 0x534d4150) {
 			smap_entry.present = 1;
@@ -240,7 +253,7 @@ void ss_entry() {
 	vga_puthex64(largest_entry->length);
 	vga_puts(" bytes.\n");
 
-	vga_puts("We now sleep forever.\n");
+	vga_puts("We shall now sleep forever.\n");
 	halt_forever();
 
 }
