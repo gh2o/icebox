@@ -1,5 +1,5 @@
 CFLAGS_32 := -m32 -nostdlib -ggdb -Os -Wall -std=c99 -ffunction-sections -fdata-sections
-LDFLAGS_32 := -Wl,-q -lgcc
+LDFLAGS_32 := -Wl,-q,--build-id=none -lgcc
 
 RUSTFLAGS := -C debuginfo -C opt-level=2 -C no-stack-check
 CFLAGS := -m64 -nostdlib -ggdb
@@ -29,7 +29,7 @@ build/disk.img: build/mbrss.bin build/kernel.elf
 	wc -c build/kernel.elf | awk ' \
 		function c(x){match(sprintf("%08x",x),"(..)(..)(..)(..)",a);return a[4]a[3]a[2]a[1]} \
 		{print c(0x80)c(0x83)c(rshift($(KERNEL_OFFSET),9))c(rshift($$1+511,9))} \
-		' | xxd -r -p | dd bs=1 seek=446 conv=notrunc of=$@
+		' | xxd -r -p | dd bs=1 seek=446 conv=notrunc status=none of=$@
 
 build/mbrss.bin: build/mbrss.elf
 	objcopy -O binary $< $@
