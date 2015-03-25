@@ -59,21 +59,17 @@ static void clear_bss() {
 static uint8_t in8(uint16_t reg) {
 	uint8_t val;
 	asm volatile(
-		"mov %1, %%dx\n\t"
-		"in %%dx, %0\n\t"
+		"in %%dx, %%al\n\t"
 		: "=a"(val)
-		: "r"(reg)
-		: "edx");
+		: "d"(reg));
 	return val;
 }
 
 static void out8(uint16_t reg, uint8_t val) {
 	asm volatile(
-		"mov %1, %%dx\n\t"
-		"out %0, %%dx\n\t"
+		"out %%al, %%dx\n\t"
 		:
-		: "a"(val), "r"(reg)
-		: "edx");
+		: "a"(val), "d"(reg));
 }
 
 static void vga_init() {
