@@ -32,6 +32,15 @@ typedef struct {
 	uint32_t present;
 } e820_entry;
 
+typedef struct {
+	uint8_t part_status;
+	uint8_t first_chs[3];
+	uint8_t part_type;
+	uint8_t last_chs[3];
+	uint32_t first_sector;
+	uint32_t num_sectors;
+} partition_entry;
+
 extern void bios_call_service(uint8_t service, bios_register_set *set);
 
 struct vga_row { vga_character_cell cols[VGA_COLS]; };
@@ -47,6 +56,8 @@ unsigned int e820_entries_count = 0;
 
 uint16_t vga_cursor;
 unsigned char scratch_sector[512];
+
+extern partition_entry partition_table_entries[4];
 
 static void clear_bss() {
 	extern char ss_bss_start;
