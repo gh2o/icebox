@@ -151,16 +151,49 @@ static void vga_puthex64(uint64_t val) {
 }
 
 static void vga_putuint64(uint64_t val) {
-	char buf[21];
-	char *ptr = &buf[20];
-	*ptr = '\0';
+	if (val < 10) {
+		vga_putc('0' + val);
+		return;
+	}
+	// calculate digits
+	unsigned char buf[21];
+	unsigned char *const ones = &buf[19];
+	unsigned char *ptr;
+	__builtin_memset(buf, 0, sizeof(buf));
+	while (val) {
+		uint64_t tst = 1;
+		ptr = ones;
+		do {
+			if (val >= tst) {
+				val -= tst;
+				(*ptr)++;
+			}
+			if (ptr[0] >= 10) {
+				ptr[0] -= 10;
+				ptr[-1] += 1;
+			}
+			tst *= 10;
+			ptr--;
+		} while (tst <= val);
+	}
+	// normalize them
+	ptr = ones;
 	do {
-		uint64_t hi = val / 10u;
-		uint8_t lo = val % 10u;
-		*--ptr = lo + '0';
-		val = hi;
-	} while (val != 0);
-	vga_puts(ptr);
+		if (ptr[0] >= 10) {
+			ptr[0] -= 10;
+			ptr[-1] += 1;
+		}
+	} while (--ptr >= buf);
+	// find start
+	unsigned char *start = buf;
+	while (!*start)
+		start++;
+	// convert to ASCII
+	ptr = start;
+	while (ptr <= ones)
+		*ptr++ += '0';
+	// print them out
+	vga_puts((char *)start);
 }
 
 __attribute__((noreturn))
