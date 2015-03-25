@@ -38,7 +38,7 @@ typedef struct {
 	uint8_t part_type;
 	uint8_t last_chs[3];
 	uint32_t first_sector;
-	uint32_t num_sectors;
+	uint32_t sector_count;
 } partition_entry;
 
 extern void bios_call_service(uint8_t service, bios_register_set *set);
@@ -257,8 +257,20 @@ void ss_entry() {
 		halt_forever();
 	}
 	vga_puts("Largest region of memory is ");
-	vga_puthex64(largest_entry->length);
+	vga_putuint64(largest_entry->length);
 	vga_puts(" bytes.\n");
+
+	// find first active partition
+	partition_entry *active_entry = NULL;
+	for (unsigned int i = 0; i < 4; i++) {
+		if (partition_table_entries[i].part_status & 0x80) {
+			active_entry = &partition_table_entries[i];
+			break;
+		}
+	}
+	vga_puts("Kernel partition is ");
+	vga_putuint64(active_entry->sector_count);
+	vga_puts(" sectors large.\n");
 
 	vga_puts("We shall now sleep forever.\n");
 	halt_forever();
