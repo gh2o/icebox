@@ -4,6 +4,7 @@
 #include <stdbool.h>
 #include <stdint.h>
 #include <stddef.h>
+#include <elf.h>
 
 #define VGA_ROWS (25)
 #define VGA_COLS (80)
@@ -259,6 +260,34 @@ static void read_sector(uint64_t sector_lba, void *dest_buffer) {
 	__builtin_memcpy(dest_buffer, scratch_sector, 512);
 }
 
+void elf_sanity_check(Elf64_Ehdr *elf_header) {
+	unsigned char *ident = elf_header->e_ident;
+	if (*(uint32_t *)ident != *(uint32_t *)ELFMAG) {
+		vga_puts("Kernel is not an ELF object!\n");
+		goto bad_elf;
+	}
+	if (ident[EI_CLASS] != ELFCLASS64) {
+		vga_puts("Kernel is not 64-bit!\n");
+		goto bad_elf;
+	}
+	if (ident[EI_DATA] != ELFDATA2LSB) {
+		vga_puts("Kernel is not little-endian!\n");
+		goto bad_elf;
+	}
+	if (ident[EI_VERSION] != EV_CURRENT) {
+		vga_puts("Kernel has invalid ELF version!\n");
+		goto bad_elf;
+	}
+	if (elf_header->e_machine != EM_X86_64) {
+		vga_puts("Kernel not built for x86_64!\n");
+		goto bad_elf;
+	}
+	return;
+bad_elf:
+	vga_puts("Invalid ELF object.\n");
+	halt_forever();
+}
+
 void ss_entry() {
 
 	// zero out BSS variables
@@ -329,6 +358,8 @@ void ss_entry() {
 
 	// copy it into region
 	uint32_t lge_base = largest_entry->base;
+	lge_base +=  0xFFFu;
+	lge_base &= ~0xFFFu; // align to 4KB pages
 	unsigned char *kernel_base = (unsigned char *)lge_base;
 	unsigned char *kernel_end = kernel_base;
 	for (uint32_t s = 0; s < active_entry->sector_count; s++) {
@@ -337,6 +368,10 @@ void ss_entry() {
 	}
 	vga_putuint64(kernel_end - kernel_base);
 	vga_puts(" bytes of kernel copied into memory.\n");
+
+	// perform sanity check on kernel
+	Elf64_Ehdr *elf_header = (Elf64_Ehdr *)kernel_base;
+	elf_sanity_check(elf_header);
 
 	vga_puts("We shall now sleep forever.\n");
 	halt_forever();
