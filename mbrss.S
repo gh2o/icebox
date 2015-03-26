@@ -251,7 +251,6 @@ enter_real_mode_helper:
 /********
 void bios_call_service(uint8_t service, bios_register_set *set)
 ********/
-.globl bios_call_service
 bios_call_service:
 	/* prologue */
 	push %ebp
@@ -307,3 +306,7 @@ bios_call_service:
 	mov %ebp, %esp
 	pop %ebp
 	ret
+
+/* EXPORTS */
+.globl bios_call_service
+.globl bios_drive_index

@@ -225,7 +225,40 @@ static void maximal_offset(const void *addr, uint16_t *es, uint32_t *reg) {
 	*reg = off;
 }
 
-static void read_sector(uint32_t sector_lba, void *dest_buffer) {
+static void read_sector(uint64_t sector_lba, void *dest_buffer) {
+	struct {
+		uint16_t packet_size;
+		uint16_t sector_count;
+		uint16_t addr_offset;
+		uint16_t addr_segment;
+		uint64_t sector_lba;
+	} disk_access_packet = {
+		.packet_size = 16,
+		.sector_count = 1,
+		.sector_lba = sector_lba,
+	};
+	uint16_t es;
+	uint32_t reg;
+	maximal_offset(scratch_sector, &es, &reg);
+	disk_access_packet.addr_offset = reg;
+	disk_access_packet.addr_segment = es;
+	// do bios call
+	extern uint8_t bios_drive_index;
+	bios_register_set regset = { .eax = 0x4200, .edx = bios_drive_index };
+	maximal_offset(&disk_access_packet, &regset.ds, &regset.esi);
+	bios_call_service(0x13, &regset);
+	// check return code
+	uint8_t rc = regset.eax >> 8;
+	if (rc) {
+		vga_puts("Error ");
+		vga_putuint64(rc);
+		vga_puts(" while reading sector ");
+		vga_putuint64(sector_lba);
+		vga_puts(" from hard drive!\n");
+		halt_forever();
+	}
+	// copy from scratch to destination
+	__builtin_memcpy(dest_buffer, scratch_sector, 512);
 }
 
 void ss_entry() {
