@@ -133,21 +133,19 @@ static void vga_puts(const char *c) {
 }
 
 static void vga_puthex64(uint64_t val) {
-	char buf[19];
-	char *ptr = &buf[18];
-	*ptr = '\0';
-	do {
-		uint8_t seg = val & 0xF;
-		if (seg < 10)
-			seg += '0';
-		else
-			seg += 'A' - 10;
-		*--ptr = seg;
-		val >>= 4;
-	} while (val != 0);
-	*--ptr = 'x';
-	*--ptr = '0';
-	vga_puts(ptr);
+	vga_puts("0x");
+	bool on = false;
+	for (unsigned int top = 64; top != 0; top -= 4) {
+		unsigned int chr = (val >> (top - 4)) & 15;
+		on = on || chr;
+		if (on) {
+			if (chr < 10)
+				chr += '0';
+			else
+				chr += 'A' - 10;
+			vga_putc(chr);
+		}
+	}
 }
 
 static void vga_putuint64(uint64_t val) {
@@ -155,14 +153,14 @@ static void vga_putuint64(uint64_t val) {
 		vga_putc('0' + val);
 		return;
 	}
-	static uint64_t powers_of_ten[] = {
+	static const uint64_t powers_of_ten[] = {
 		10000000000000000000ull, 1000000000000000000ull, 100000000000000000ull, 10000000000000000ull,
 		1000000000000000ull, 100000000000000ull, 10000000000000ull, 1000000000000ull,
 		100000000000ull, 10000000000ull, 1000000000ull, 100000000ull,
 		10000000ull, 1000000ull, 100000ull, 10000ull,
 		1000ull, 100ull, 10ull, 1ull
 	};
-	uint64_t *pot = powers_of_ten;
+	const uint64_t *pot = powers_of_ten;
 	while (*pot > val)
 		pot++;
 	while (pot < powers_of_ten + 20) {
