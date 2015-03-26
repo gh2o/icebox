@@ -337,6 +337,8 @@ void ss_entry() {
 		read_sector(active_entry->first_sector + s, kernel_end);
 		kernel_end += 512;
 	}
+	vga_putuint64(kernel_end - kernel_base);
+	vga_puts(" bytes of kernel copied into memory.\n");
 
 	vga_puts("We shall now sleep forever.\n");
 	halt_forever();
