@@ -3,7 +3,7 @@ LDFLAGS_32 := -Wl,-q,--build-id=none -lgcc
 
 RUSTFLAGS := -C debuginfo -C opt-level=2 -C no-stack-check
 CFLAGS := -m64 -nostdlib -ggdb
-LDFLAGS := -Wl,-n
+LDFLAGS := -Wl,-q,--build-id=none -lgcc -Wl,-n
 
 KERNEL_OFFSET := 1048576
 
