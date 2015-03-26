@@ -225,6 +225,9 @@ static void maximal_offset(const void *addr, uint16_t *es, uint32_t *reg) {
 	*reg = off;
 }
 
+static void read_sector(uint32_t sector_lba, void *dest_buffer) {
+}
+
 void ss_entry() {
 
 	// zero out BSS variables
@@ -256,14 +259,22 @@ void ss_entry() {
 	} while (regset.ebx);
 	e820_entries[e820_entries_count] = (e820_entry){};
 
-	// find largest usable section
+	// find largest usable section under 4GB
 	e820_entry *largest_entry = NULL;
+	uint32_t largest_efflen = 0;
 	for (size_t i = 0; i < e820_entries_count; i++) {
 		e820_entry *ent = &e820_entries[i];
 		if (ent->type != 0x01)
 			continue;
-		if (!largest_entry || ent->length > largest_entry->length)
+		if (ent->base >> 32)
+			continue;
+		uint32_t efflen = -(uint32_t)ent->base;
+		if (efflen < ent->length)
+			efflen = ent->length;
+		if (efflen > largest_efflen) {
 			largest_entry = ent;
+			largest_efflen = efflen;
+		}
 	}
 	if (!largest_entry) {
 		vga_puts("Couldn't locate usable memory!\n");
@@ -284,6 +295,15 @@ void ss_entry() {
 	vga_puts("Kernel partition is ");
 	vga_putuint64(active_entry->sector_count);
 	vga_puts(" sectors large.\n");
+
+	// copy it into region
+	uint32_t lge_base = largest_entry->base;
+	unsigned char *kernel_base = (unsigned char *)lge_base;
+	unsigned char *kernel_end = kernel_base;
+	for (uint32_t s = 0; s < active_entry->sector_count; s++) {
+		read_sector(active_entry->first_sector + s, kernel_end);
+		kernel_end += 512;
+	}
 
 	vga_puts("We shall now sleep forever.\n");
 	halt_forever();
