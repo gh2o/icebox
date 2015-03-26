@@ -2,7 +2,7 @@ ENTRY(kernel_entry)
 
 SECTIONS {
 
-	kernel_start = 0xffffffffc0000000;
+	kernel_start = 0xffffffff00000000;
 
 	. = kernel_start;
 
