@@ -56,7 +56,6 @@ extern e820_entry e820_entries[];
 unsigned int e820_entries_count = 0;
 
 uint16_t vga_cursor;
-unsigned char scratch_sector[512];
 
 extern partition_entry partition_table_entries[4];
 
@@ -238,6 +237,7 @@ static void read_sector(uint64_t sector_lba, void *dest_buffer) {
 	};
 	uint16_t es;
 	uint32_t reg;
+	static unsigned char scratch_sector[512];
 	maximal_offset(scratch_sector, &es, &reg);
 	disk_access_packet.addr_offset = reg;
 	disk_access_packet.addr_segment = es;
