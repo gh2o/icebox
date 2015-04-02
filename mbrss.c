@@ -61,6 +61,23 @@ uint16_t vga_cursor;
 unsigned char *pal_alloc_start;
 unsigned char *pal_alloc_end;
 
+// VM page table
+typedef union {
+	uint64_t raw;
+	struct {
+		unsigned int present       : 1;
+		unsigned int writable      : 1;
+		unsigned int privileged    : 1;
+		unsigned int write_through : 1;
+		unsigned int cache_disable : 1;
+		unsigned int accessed      : 1;
+		unsigned int dirty         : 1;
+		unsigned int is_page       : 1; // instead of a directory
+		unsigned int global        : 1;
+	};
+} page_entry;
+page_entry *initial_pml4;
+
 static void clear_bss() {
 	extern char ss_bss_start;
 	extern char ss_bss_end;
@@ -393,12 +410,9 @@ void ss_entry() {
 	Elf64_Ehdr *elf_header = (Elf64_Ehdr *)kernel_start;
 	elf_sanity_check(elf_header);
 
-	// map it into virtual memory
-	uint32_t pgt_base = (uint32_t)kernel_end;
-	pgt_base +=  0xFFFu;
-	pgt_base &= ~0xFFFu;
-	unsigned char *pgt_start = (unsigned char *)pgt_base;
-	unsigned char *pgt_end = pgt_start;
+	// create page table
+	initial_pml4 = pal_alloc(4096);
+	__builtin_memset(initial_pml4, 0, 4096);
 
 	vga_puts("We shall now sleep forever.\n");
 	halt_forever();
