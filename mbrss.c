@@ -5,6 +5,7 @@
 #include <stdint.h>
 #include <stddef.h>
 #include <elf.h>
+#include "x86.h"
 
 #define VGA_ROWS (25)
 #define VGA_COLS (80)
@@ -308,7 +309,58 @@ static void *pal_alloc(size_t sz) {
 }
 
 static void map_page(uint64_t virt, uint64_t phys) {
-	vga_puts("Implement map_page()!\n");
+	// PML4
+	uint64_t *pml4 = initial_pml4;
+	unsigned int pml4i = (virt >> 39) & 0x1FFul;
+	uint64_t *pml4e = &pml4[pml4i];
+	if (!*pml4e) {
+		uint64_t *t = pal_alloc(4096);
+		__builtin_memset(t, 0, 4096);
+		*pml4e = (uintptr_t)t |
+			PAGE_DESC_PRESENT |
+			PAGE_DESC_WRITABLE |
+			PAGE_DESC_PRIVILEGED;
+	}
+	// PDPT
+	uint64_t *pdpt = (uint64_t *)(uintptr_t)(*pml4e & ~0xFFFul);
+	unsigned int pdpti = (virt >> 30) & 0x1FFu;
+	uint64_t *pdpte = &pdpt[pdpti];
+	if (!*pdpte) {
+		uint64_t *t = pal_alloc(4096);
+		__builtin_memset(t, 0, 4096);
+		*pdpte = (uintptr_t)t |
+			PAGE_DESC_PRESENT |
+			PAGE_DESC_WRITABLE |
+			PAGE_DESC_PRIVILEGED;
+	}
+	// PD
+	uint64_t *pd = (uint64_t *)(uintptr_t)(*pdpte & ~0xFFFul);
+	unsigned int pdi = (virt >> 21) & 0x1FFu;
+	uint64_t *pde = &pd[pdi];
+	if (!*pde) {
+		uint64_t *t = pal_alloc(4096);
+		__builtin_memset(t, 0, 4096);
+		*pde = (uintptr_t)t |
+			PAGE_DESC_PRESENT |
+			PAGE_DESC_WRITABLE |
+			PAGE_DESC_PRIVILEGED;
+	}
+	// PT
+	uint64_t *pt = (uint64_t *)(uintptr_t)(*pde & ~0xFFFul);
+	unsigned int pti = (virt >> 12) & 0x1FFu;
+	uint64_t *pte = &pt[pti];
+	if (!*pte) {
+		*pte = (uintptr_t)phys |
+			PAGE_DESC_PRESENT |
+			PAGE_DESC_WRITABLE |
+			PAGE_DESC_PRIVILEGED;
+	} else {
+		vga_puts("Page at virtual address ");
+		vga_puthex64(virt);
+		vga_puts(" already mapped to physical address ");
+		vga_puthex64(*pte & ~0xFFFul);
+		vga_puts("!\n");
+	}
 }
 
 void ss_entry() {

@@ -22,7 +22,7 @@
 #define PAGE_DESC_WRITETHRU  (1 << 3)
 #define PAGE_DESC_UNCACHED   (1 << 4)
 #define PAGE_DESC_ACCESSED   (1 << 5)
-#define PAGE_DESC_DIRT       (1 << 6)
+#define PAGE_DESC_DIRTY      (1 << 6)
 #define PAGE_DESC_ISPAGE     (1 << 7) // rather than directory
 #define PAGE_DESC_GLOBAL     (1 << 8)
 
