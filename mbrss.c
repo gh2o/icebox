@@ -437,8 +437,8 @@ void ss_entry() {
 			vga_puts("-byte alignment requested!\n");
 			halt_forever();
 		}
-		if (phdr_ent->p_filesz > phdr_ent->p_memsz) {
-			vga_puts("PH file size exceeds memory size!\n");
+		if (phdr_ent->p_filesz != phdr_ent->p_memsz) {
+			vga_puts("PH file size is different from memory size!\n");
 			halt_forever();
 		}
 		vga_puts("Mapping ");
