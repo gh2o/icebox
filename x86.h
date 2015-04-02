@@ -26,4 +26,10 @@
 #define PAGE_DESC_ISPAGE     (1 << 7) // rather than directory
 #define PAGE_DESC_GLOBAL     (1 << 8)
 
-#define CR0_PE (1 << 0)
+#define CR0_PE  (1 << 0)
+#define CR0_PG  (1 << 31)
+#define CR4_PAE (1 << 5)
+
+#define IA32_EFER     0xC0000080
+#define IA32_EFER_LME (1 << 8)
+#define IA32_EFER_LMA (1 << 10)
