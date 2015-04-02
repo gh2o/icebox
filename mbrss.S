@@ -186,6 +186,9 @@ initial_gdt_table:
 	/* segment 3: 16-bit code (for real mode entry) */
 	.long FLAT_LO(0, 0x0FFFF)
 	.long FLAT_HI(0, 0x0FFFF) | SEG_DESC_S | SEG_DESC_TYPE(0xA)
+	/* segment 4: 64-bit code */
+	.long FLAT_LO(0, 0xFFFFF)
+	.long FLAT_HI(0, 0xFFFFF) | SEG_DESC_G | SEG_DESC_S | SEG_DESC_64 | SEG_DESC_TYPE(0xA)
 #undef FLAT_LO
 #undef FLAT_HI
 initial_gdt_register:

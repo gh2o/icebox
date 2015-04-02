@@ -9,7 +9,7 @@
 
 #define SEG_DESC_G       (1 << 23)
 #define SEG_DESC_32      (1 << 22)
-#define SEG_DESC_L       (1 << 21)
+#define SEG_DESC_64      (1 << 21)
 #define SEG_DESC_AVL     (1 << 20)
 #define SEG_DESC_P       (1 << 15)
 #define SEG_DESC_DPL(x)  ((x & 3) << 13)
