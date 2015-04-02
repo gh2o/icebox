@@ -57,6 +57,10 @@ unsigned int e820_entries_count = 0;
 
 uint16_t vga_cursor;
 
+// page-aligned allocator
+unsigned char *pal_alloc_start;
+unsigned char *pal_alloc_end;
+
 extern partition_entry partition_table_entries[4];
 
 static void clear_bss() {
@@ -260,7 +264,7 @@ static void read_sector(uint64_t sector_lba, void *dest_buffer) {
 	__builtin_memcpy(dest_buffer, scratch_sector, 512);
 }
 
-void elf_sanity_check(Elf64_Ehdr *elf_header) {
+static void elf_sanity_check(Elf64_Ehdr *elf_header) {
 	unsigned char *ident = elf_header->e_ident;
 	if (*(uint32_t *)ident != *(uint32_t *)ELFMAG) {
 		vga_puts("Kernel is not an ELF object!\n");
@@ -286,6 +290,16 @@ void elf_sanity_check(Elf64_Ehdr *elf_header) {
 bad_elf:
 	vga_puts("Invalid ELF object.\n");
 	halt_forever();
+}
+
+static void *pal_alloc(size_t sz) {
+	// round up
+	sz +=  0xFFFu;
+	sz &= ~0xFFFu;
+	// allocate it
+	void *ptr = pal_alloc_end;
+	pal_alloc_end += sz;
+	return ptr;
 }
 
 void ss_entry() {
@@ -344,6 +358,13 @@ void ss_entry() {
 	vga_putuint64(largest_entry->length);
 	vga_puts(" bytes.\n");
 
+	// set up page table allocator
+	uint32_t pal_alloc_base = largest_entry->base;
+	pal_alloc_base +=  0xFFFu;
+	pal_alloc_base &= ~0xFFFu;
+	pal_alloc_start = (unsigned char *)pal_alloc_base;
+	pal_alloc_end = (unsigned char *)pal_alloc_base;
+
 	// find first active partition
 	partition_entry *active_entry = NULL;
 	for (unsigned int i = 0; i < 4; i++) {
@@ -356,17 +377,17 @@ void ss_entry() {
 	vga_putuint64(active_entry->sector_count);
 	vga_puts(" sectors large.\n");
 
-	// copy it into region
-	uint32_t lge_base = largest_entry->base;
-	lge_base +=  0xFFFu;
-	lge_base &= ~0xFFFu; // align to 4KB pages
-	unsigned char *kernel_start = (unsigned char *)lge_base;
+	// copy kernel into memory
+	uint32_t kernel_sector_start = active_entry->first_sector;
+	uint32_t kernel_sector_count = active_entry->sector_count;
+	uint32_t kernel_size = active_entry->sector_count * 512;
+	unsigned char *kernel_start = pal_alloc(kernel_size);
 	unsigned char *kernel_end = kernel_start;
-	for (uint32_t s = 0; s < active_entry->sector_count; s++) {
-		read_sector(active_entry->first_sector + s, kernel_end);
+	for (uint32_t s = 0; s < kernel_sector_count; s++) {
+		read_sector(kernel_sector_start + s, kernel_end);
 		kernel_end += 512;
 	}
-	vga_putuint64(kernel_end - kernel_start);
+	vga_putuint64(kernel_size);
 	vga_puts(" bytes of kernel copied into memory.\n");
 
 	// perform sanity check on kernel
