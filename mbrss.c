@@ -153,6 +153,10 @@ static void vga_puts(const char *c) {
 
 static void vga_puthex64(uint64_t val) {
 	vga_puts("0x");
+	if (val == 0) {
+		vga_putc('0');
+		return;
+	}
 	bool on = false;
 	for (unsigned int top = 64; top != 0; top -= 4) {
 		unsigned int chr = (val >> (top - 4)) & 15;
