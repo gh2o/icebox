@@ -15,8 +15,13 @@ SECTIONS {
 	.data : {
 		*(.data .data.*)
 	}
+	.got : {
+		*(.got .got.*)
+	}
 	.bss : {
+		bss_start = .;
 		*(.bss .bss.*)
+		bss_end = .;
 	}
 
 	kernel_end = .;
