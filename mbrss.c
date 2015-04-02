@@ -509,9 +509,19 @@ void ss_entry() {
 	for (uint32_t addr = 0x4000; addr < 0x200000; addr += 0x1000)
 		map_page(addr, addr);
 
-	// enable 64-bit mode
+	// enable 64-bit paging
 	asm volatile("mov %0, %%cr3" :: "r"(initial_pml4));
 	asm volatile("wrmsr" :: "c"(IA32_EFER), "A"((uint64_t)IA32_EFER_LME));
+	asm volatile(
+			"mov %%cr4, %%eax\n\t"
+			"or %0, %%eax\n\t"
+			"mov %%eax, %%cr4\n\t"
+			:: "n"(CR4_PAE) : "eax");
+	asm volatile(
+			"mov %%cr0, %%eax\n\t"
+			"or %0, %%eax\n\t"
+			"mov %%eax, %%cr0\n\t"
+			:: "n"(CR0_PG) : "eax");
 
 	vga_puts("We shall now sleep forever.\n");
 	halt_forever();
