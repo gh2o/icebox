@@ -321,6 +321,10 @@ static void *pal_alloc(size_t sz) {
 	return ptr;
 }
 
+static void map_page(uint64_t virt, uint64_t phys) {
+	vga_puts("Implement map_page()!\n");
+}
+
 void ss_entry() {
 
 	// zero out BSS variables
@@ -417,6 +421,51 @@ void ss_entry() {
 	// create page table
 	initial_pml4 = pal_alloc(4096);
 	__builtin_memset(initial_pml4, 0, 4096);
+
+	// map kernel into memory
+	unsigned char *phdr_ptr = kernel_start + elf_header->e_phoff;
+	unsigned int phdr_count = elf_header->e_phnum;
+	unsigned int phdr_stride = elf_header->e_phentsize;
+	for (unsigned int i = 0; i < phdr_count; i++, phdr_ptr += phdr_stride) {
+		Elf64_Phdr *phdr_ent = (Elf64_Phdr *)phdr_ptr;
+		if (phdr_ent->p_type != PT_LOAD) {
+			continue;
+		}
+		if (phdr_ent->p_align != 0x1000) {
+			vga_puts("Only 4096-byte alignment supported but ");
+			vga_putuint64(phdr_ent->p_align);
+			vga_puts("-byte alignment requested!\n");
+			halt_forever();
+		}
+		if (phdr_ent->p_filesz > phdr_ent->p_memsz) {
+			vga_puts("PH file size exceeds memory size!\n");
+			halt_forever();
+		}
+		vga_puts("Mapping ");
+		vga_putuint64(phdr_ent->p_filesz);
+		vga_putc('/');
+		vga_putuint64(phdr_ent->p_memsz);
+		vga_puts(" bytes at ");
+		vga_puthex64(phdr_ent->p_vaddr);
+		vga_puts(".\n");
+		uint64_t phys_addr = (uintptr_t)(kernel_start + phdr_ent->p_offset);
+		uint64_t virt_addr = phdr_ent->p_vaddr;
+		uint32_t bytes_mapped = 0;
+		while (bytes_mapped < phdr_ent->p_filesz) {
+			map_page(virt_addr, phys_addr);
+			phys_addr += 4096;
+			virt_addr += 4096;
+			bytes_mapped += 4096;
+		}
+		size_t zero_size = (phdr_ent->p_memsz - bytes_mapped + 0xFFFu) & ~0xFFFu;
+		uint64_t zero_addr = (uintptr_t)pal_alloc(zero_size);
+		while (bytes_mapped < phdr_ent->p_memsz) {
+			map_page(virt_addr, zero_addr);
+			zero_addr += 4096;
+			virt_addr += 4096;
+			bytes_mapped += 4096;
+		}
+	}
 
 	vga_puts("We shall now sleep forever.\n");
 	halt_forever();
