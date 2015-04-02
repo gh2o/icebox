@@ -8,6 +8,11 @@ mbr_entry:
 	/* disable interrupts */
 	cli
 
+	/* reset control registers */
+	xor %eax, %eax
+	mov %eax, %cr0
+	mov %eax, %cr4
+
 	/* ground %ss and set %bp */
 	mov %ss, %ax
 	shl $4, %ax
