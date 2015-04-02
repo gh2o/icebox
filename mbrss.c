@@ -505,6 +505,10 @@ void ss_entry() {
 		}
 	}
 
+	// identity map ourselves starting from 16KB
+	for (uint32_t addr = 0x4000; addr < 0x200000; addr += 0x1000)
+		map_page(addr, addr);
+
 	vga_puts("We shall now sleep forever.\n");
 	halt_forever();
 
