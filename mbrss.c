@@ -366,21 +366,21 @@ void ss_entry() {
 	pal_alloc_end = (unsigned char *)pal_alloc_base;
 
 	// find first active partition
-	partition_entry *active_entry = NULL;
+	partition_entry *kernel_ptentry = NULL;
 	for (unsigned int i = 0; i < 4; i++) {
 		if (partition_table_entries[i].part_status & 0x80) {
-			active_entry = &partition_table_entries[i];
+			kernel_ptentry = &partition_table_entries[i];
 			break;
 		}
 	}
 	vga_puts("Kernel partition is ");
-	vga_putuint64(active_entry->sector_count);
+	vga_putuint64(kernel_ptentry->sector_count);
 	vga_puts(" sectors large.\n");
 
 	// copy kernel into memory
-	uint32_t kernel_sector_start = active_entry->first_sector;
-	uint32_t kernel_sector_count = active_entry->sector_count;
-	uint32_t kernel_size = active_entry->sector_count * 512;
+	uint32_t kernel_sector_start = kernel_ptentry->first_sector;
+	uint32_t kernel_sector_count = kernel_ptentry->sector_count;
+	uint32_t kernel_size = kernel_sector_count * 512;
 	unsigned char *kernel_start = pal_alloc(kernel_size);
 	unsigned char *kernel_end = kernel_start;
 	for (uint32_t s = 0; s < kernel_sector_count; s++) {
