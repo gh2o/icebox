@@ -315,6 +315,20 @@ bios_call_service:
 	pop %ebp
 	ret
 
+/********
+void enter_kernel(uint64_t addr)
+********/
+enter_kernel:
+	/* prepare stack */
+	add $4, %esp // address will be jumped to on return
+	/* enter 64-bit mode */
+	ljmp $(4 << 3), $8f
+	8:
+	/* jump to it! */
+	ret
+
 /* EXPORTS */
 .globl bios_call_service
 .globl bios_drive_index
+.globl enter_kernel
+.globl enter_kernel_64

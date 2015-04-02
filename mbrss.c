@@ -526,7 +526,7 @@ void ss_entry() {
 	// CAUTION: until a page fault handler is registered,
 	// any page faults from here on will crash the system.
 
-	vga_puts("We shall now sleep forever.\n");
-	halt_forever();
-
+	// jump to kernel!
+	extern void enter_kernel(uint64_t addr);
+	enter_kernel(elf_header->e_entry);
 }
