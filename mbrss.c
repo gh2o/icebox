@@ -523,6 +523,9 @@ void ss_entry() {
 			"mov %%eax, %%cr0\n\t"
 			:: "n"(CR0_PG) : "eax");
 
+	// CAUTION: until a page fault handler is registered,
+	// any page faults from here on will crash the system.
+
 	vga_puts("We shall now sleep forever.\n");
 	halt_forever();
 
