@@ -360,18 +360,25 @@ void ss_entry() {
 	uint32_t lge_base = largest_entry->base;
 	lge_base +=  0xFFFu;
 	lge_base &= ~0xFFFu; // align to 4KB pages
-	unsigned char *kernel_base = (unsigned char *)lge_base;
-	unsigned char *kernel_end = kernel_base;
+	unsigned char *kernel_start = (unsigned char *)lge_base;
+	unsigned char *kernel_end = kernel_start;
 	for (uint32_t s = 0; s < active_entry->sector_count; s++) {
 		read_sector(active_entry->first_sector + s, kernel_end);
 		kernel_end += 512;
 	}
-	vga_putuint64(kernel_end - kernel_base);
+	vga_putuint64(kernel_end - kernel_start);
 	vga_puts(" bytes of kernel copied into memory.\n");
 
 	// perform sanity check on kernel
-	Elf64_Ehdr *elf_header = (Elf64_Ehdr *)kernel_base;
+	Elf64_Ehdr *elf_header = (Elf64_Ehdr *)kernel_start;
 	elf_sanity_check(elf_header);
+
+	// map it into virtual memory
+	uint32_t pgt_base = (uint32_t)kernel_end;
+	pgt_base +=  0xFFFu;
+	pgt_base &= ~0xFFFu;
+	unsigned char *pgt_start = (unsigned char *)pgt_base;
+	unsigned char *pgt_end = pgt_start;
 
 	vga_puts("We shall now sleep forever.\n");
 	halt_forever();
