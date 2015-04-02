@@ -61,8 +61,6 @@ uint16_t vga_cursor;
 unsigned char *pal_alloc_start;
 unsigned char *pal_alloc_end;
 
-extern partition_entry partition_table_entries[4];
-
 static void clear_bss() {
 	extern char ss_bss_start;
 	extern char ss_bss_end;
@@ -368,6 +366,7 @@ void ss_entry() {
 	// find first active partition
 	partition_entry *kernel_ptentry = NULL;
 	for (unsigned int i = 0; i < 4; i++) {
+		extern partition_entry partition_table_entries[4];
 		if (partition_table_entries[i].part_status & 0x80) {
 			kernel_ptentry = &partition_table_entries[i];
 			break;
