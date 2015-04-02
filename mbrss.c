@@ -62,21 +62,7 @@ unsigned char *pal_alloc_start;
 unsigned char *pal_alloc_end;
 
 // VM page table
-typedef union {
-	uint64_t raw;
-	struct {
-		unsigned int present       : 1;
-		unsigned int writable      : 1;
-		unsigned int privileged    : 1;
-		unsigned int write_through : 1;
-		unsigned int cache_disable : 1;
-		unsigned int accessed      : 1;
-		unsigned int dirty         : 1;
-		unsigned int is_page       : 1; // instead of a directory
-		unsigned int global        : 1;
-	};
-} page_entry;
-page_entry *initial_pml4;
+uint64_t *initial_pml4;
 
 static void clear_bss() {
 	extern char ss_bss_start;

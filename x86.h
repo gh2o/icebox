@@ -16,4 +16,14 @@
 #define SEG_DESC_S       (1 << 12)
 #define SEG_DESC_TYPE(x) ((x & 15) << 8)
 
+#define PAGE_DESC_PRESENT    (1 << 0)
+#define PAGE_DESC_WRITABLE   (1 << 1)
+#define PAGE_DESC_PRIVILEGED (1 << 2)
+#define PAGE_DESC_WRITETHRU  (1 << 3)
+#define PAGE_DESC_UNCACHED   (1 << 4)
+#define PAGE_DESC_ACCESSED   (1 << 5)
+#define PAGE_DESC_DIRT       (1 << 6)
+#define PAGE_DESC_ISPAGE     (1 << 7) // rather than directory
+#define PAGE_DESC_GLOBAL     (1 << 8)
+
 #define CR0_PE (1 << 0)
