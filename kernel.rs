@@ -21,7 +21,7 @@ unsafe fn clear_bss() {
 }
 
 #[no_mangle]
-pub unsafe fn kernel_entry() {
+pub unsafe extern fn kernel_entry() {
     clear_bss();
     loop {}
 }
