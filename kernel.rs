@@ -11,19 +11,17 @@ unsafe fn byte_ptr<T>(obj: &mut T) -> *mut u8 {
     return obj as *mut T as *mut u8;
 }
 
-fn clear_bss() {
-    unsafe {
-        let start = byte_ptr(&mut bss_start);
-        let end = byte_ptr(&mut bss_end);
-        let size = end as usize - start as usize;
-        for i in 0..size {
-            *start.offset(i as isize) = 0;
-        }
+unsafe fn clear_bss() {
+    let start = byte_ptr(&mut bss_start);
+    let end = byte_ptr(&mut bss_end);
+    let size = end as usize - start as usize;
+    for i in 0..size {
+        *start.offset(i as isize) = 0;
     }
 }
 
 #[no_mangle]
-pub fn kernel_entry() {
+pub unsafe fn kernel_entry() {
     clear_bss();
     loop {}
 }
