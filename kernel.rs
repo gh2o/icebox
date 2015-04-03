@@ -1,7 +1,6 @@
 #![feature(core)]
 
 extern crate core;
-use core::intrinsics::volatile_store;
 
 extern {
     static mut bss_start: u8;
@@ -18,7 +17,7 @@ fn clear_bss() {
         let end = byte_ptr(&mut bss_end);
         let size = end as usize - start as usize;
         for i in 0..size {
-            volatile_store(start.offset(i as isize), 0);
+            *start.offset(i as isize) = 0;
         }
     }
 }
