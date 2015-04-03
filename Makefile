@@ -7,6 +7,9 @@ LDFLAGS := -Wl,-q,--build-id=none -lgcc -Wl,-n
 
 KERNEL_OFFSET := 1048576
 
+MBRSS_SRCS := mbrss.S mbrss.c
+KERNEL_SRCS := kernel.S kernel.rs
+
 all: build/disk.img
 
 run: build/disk.img
@@ -14,8 +17,6 @@ run: build/disk.img
 
 .PHONY: all run
 .DELETE_ON_ERROR:
-
-$(shell mkdir -p build)
 
 build/disk.qcow: build/disk.img
 	qemu-img convert -O qcow $< $@
@@ -31,17 +32,21 @@ build/disk.img: build/mbrss.bin build/kernel.elf
 		{print c(0x80)c(0x83)c(rshift($(KERNEL_OFFSET),9))c(rshift($$1+511,9))} \
 		' | xxd -r -p | dd bs=1 seek=446 conv=notrunc status=none of=$@
 
+MBRSS_OBJS := $(patsubst %,build/mbrss/%.o,$(MBRSS_SRCS))
 build/mbrss.bin: build/mbrss.elf
 	objcopy -O binary $< $@
-
-build/mbrss.elf: build/mbrss.S.o build/mbrss.c.o mbrss.x
-	gcc build/mbrss.{S,c}.o -o $@ -Wl,-T,mbrss.x $(CFLAGS_32) $(LDFLAGS_32)
-
-build/mbrss.%.o: mbrss.%
+build/mbrss.elf: $(MBRSS_OBJS) mbrss.x
+	gcc $(MBRSS_OBJS) -o $@ -Wl,-T,mbrss.x $(CFLAGS_32) $(LDFLAGS_32)
+build/mbrss/%.o: %
+	@mkdir -p build/mbrss
 	gcc $^ -c -o $@ $(CFLAGS_32)
 
-build/kernel.elf: build/kernel.rs.o kernel.x
-	gcc build/kernel.rs.o -o $@ -Wl,-T,kernel.x $(CFLAGS) $(LDFLAGS)
-
-build/%.rs.o: %.rs
+KERNEL_OBJS := $(patsubst %,build/kernel/%.o,$(KERNEL_SRCS))
+build/kernel.elf: $(KERNEL_OBJS) kernel.x
+	gcc $(KERNEL_OBJS) -o $@ -Wl,-T,kernel.x $(CFLAGS) $(LDFLAGS)
+build/kernel/%.rs.o: %.rs
+	@mkdir -p build/kernel
 	rustc --emit=obj --crate-type=lib $^ -o $@ $(RUSTFLAGS)
+build/kernel/%.S.o: %.S
+	@mkdir -p build/kernel
+	gcc $^ -c -o $@ $(CFLAGS)
