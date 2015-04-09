@@ -105,18 +105,20 @@ real_mode_call:
 read_single_sector:
 	/* prologue */
 	push %esi
+	push %edi
 	/* fill in the packet LBA (arg 1) */
-	mov 8(%esp), %eax
+	mov 12(%esp), %eax
 	mov %eax, disk_access_packet+8
 	/* do bios call */
 	mov $read_single_sector_16, %ax
 	call real_mode_call
 	/* copy it into buffer (arg 2) */
 	mov $scratch_sector, %esi
-	mov 12(%esp), %edi
+	mov 16(%esp), %edi
 	mov $512, %ecx
 	rep movsb
 	/* epilogue */
+	pop %edi
 	pop %esi
 	ret
 
