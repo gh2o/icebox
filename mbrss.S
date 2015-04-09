@@ -1,334 +1,156 @@
 #include "x86.h"
 
-.code16
+.section .text.entry
 
-.section .text.mbr
-mbr_entry:
+.code16
+mbr_entry_16:
 
 	/* disable interrupts */
 	cli
 
-	/* reset control registers */
+	/* zero control registers */
 	xor %eax, %eax
 	mov %eax, %cr0
 	mov %eax, %cr4
 
-	/* ground %ss and set %bp */
-	mov %ss, %ax
-	shl $4, %ax
-	add %ax, %sp
-	mov %sp, %bp
-	xor %ax, %ax
-	mov %ax, %ss
-
-	/* ground %ds and %es */
+	/* zero %ds and %es */
 	mov %ax, %ds
 	mov %ax, %es
 
-	/* ground %cs after copying to mbr_start */
-	call 6f
-	6:
-	pop %ax
-	mov %cs, %si
-	shl $4, %si
-	add %ax, %si
-	add $(mbr_entry - 6b), %si
-	mov $mbr_start, %di
-	cmp %si, %di
-	je .Lafter_copy
+	/* figure out where we are */
+	call 1f
+	1: pop %ax
+	mov %cs, %bx
+	shl $4, %bx
+	add %bx, %ax // %ax now contains actual location of 1b
+
+	/* copy it if necessary, zero %cs */
+	cmp $1b, %ax
+	je .Lno_need_to_copy
+	sub $(1b - mbr_entry_16), %ax
+	mov %ax, %si
+	mov $mbr_entry_16, %di
 	mov $512, %cx
-	rep movsb (%si), (%di)
-	ljmp $0, $.Lafter_copy
-	.Lafter_copy:
+	rep movsb
+	ljmp $0, $mbr_entry_16
+	.Lno_need_to_copy:
+
+	/* zero %ss and set up stack */
+	xor %ax, %ax
+	mov %ax, %ss
+	mov $scratch_sector, %sp
 
 	/* save drive index */
 	mov %dl, bios_drive_index
 
-	/* write loading string */
-	mov $loading_ss_string, %si
-	call write_string_real_mode
-
-	/* read first sector in second stage */
-	mov $1, %eax
-	xor %edx, %edx
-	mov %dx, %es
-	mov $ss_start, %di
-	call read_sector_real_mode
-	jc .Lentry_error
-
-	/* get second stage size */
-	mov ss_hdr_size, %ebx
-	mov ss_hdr_szinv, %ecx
-	not %ecx
-	cmp %ecx, %ebx
-	jne .Lss_invalid
-
-	/* convert to number of sectors */
-	add $511, %ecx
-	shr $9, %ecx
-
-	/* read rest of sectors */
-	4:
-	mov %es, %bx
-	add $(512 >> 4), %bx
-	mov %bx, %es
-	inc %eax
-	cmp %ecx, %eax
-	je 5f
-	call read_sector_real_mode
-	jc .Lentry_error
-	jmp 4b
-	5:
-
-	/* write done string */
-	mov $done_string, %si
-	call write_string_real_mode
-
-	/* set GDT */
+	/* setup GDT */
 	lgdt initial_gdt_register
 
-	/* exit real mode and jump to second stage */
-	pushl $ss_stub
-	jmp exit_real_mode_helper
+	/* enter protected mode */
+	mov $CR0_PE, %eax
+	mov %eax, %cr0
+	ljmp $(1 << 3), $mbr_entry_32a
 
-.Lss_invalid:
-	/* write invalid string */
-	mov $invalid_string, %si
-	call write_string_real_mode
-	jmp .Lsleep_forever
+real_mode_call_16:
+	/* save function address */
+	push %ax
+	/* disable protected mode */
+	mov $0, %eax
+	mov %eax, %cr0
+	ljmp $0, $2f
+	2:
+	/* reset segment registers */
+	mov %ax, %ds
+	mov %ax, %es
+	mov %ax, %ss
+	/* call the function */
+	pop %ax
+	call *%ax
+	push %ax
+	/* enable protected mode */
+	mov $CR0_PE, %eax
+	mov %eax, %cr0
+	ljmp $(3 << 3), $3f
+	3:
+	/* reset segment registers */
+	mov $(2 << 3), %ax
+	mov %ax, %ds
+	mov %ax, %es
+	mov %ax, %ss
+	/* done! */
+	pop %ax
+	lret
 
-.Lentry_error:
-	/* write error string */
-	mov $error_string, %si
-	call write_string_real_mode
-	jmp .Lsleep_forever
-
-.Lsleep_forever:
-	/* sleep forever */
-	hlt
-	jmp .Lsleep_forever
-
-read_sector_real_mode: /* LBA in %edx:%eax, target in %es:%di, error code in %bl, error status in CF */
-	/* prologue */
-	push %bp
-	push %si
-	push %eax
-	push %edx
-	mov %sp, %bp
-	/* setup DAP */
-	push %edx
-	push %eax
-	push %es
-	push %di
-	pushl $0x00010010
-	/* call interrupt */
+read_single_sector_16:
 	mov $0x42, %ah
 	mov bios_drive_index, %dl
-	mov %sp, %si
+	mov $disk_access_packet, %si
 	int $0x13
-	mov %ah, %bl
-	/* epilogue (must preserve flags) */
-	mov %bp, %sp
-	pop %edx
-	pop %eax
-	pop %si
-	pop %bp
 	ret
-	
-write_character_real_mode: /* charcter to write in %al, clobbers %ax */
-	push %bx
-	mov $14, %ah
-	xor %bx, %bx
-	int $0x10
-	pop %bx
-	ret
-
-write_string_real_mode: /* string to write in %si, clobbers %si */
-	push %ax
-	1:
-	mov (%si), %al
-	test %al, %al
-	jz 2f
-	call write_character_real_mode
-	add $1, %si
-	jmp 1b
-	2:
-	pop %ax
-	ret
-
-exit_real_mode_helper:
-	push %eax
-	sidt real_mode_idt
-	mov %cr0, %eax
-	or $CR0_PE, %eax
-	mov %eax, %cr0
-	ljmp $(1 << 3), $8f
-	8:
-	.code32
-	mov $(2 << 3), %ax
-	mov %ax, %ss
-	mov %ax, %ds
-	mov %ax, %es
-	lidt prot_mode_idt
-	pop %eax
-	ret
-	.code16
-
-.section .data.mbr
-.align 16
-initial_gdt_table:
-#define FLAT_LO(base, limit) (SEG_DESC_BASE_PACK_LO(base) | SEG_DESC_LIMIT_PACK_LO(limit))
-#define FLAT_HI(base, limit) (SEG_DESC_BASE_PACK_HI(base) | SEG_DESC_LIMIT_PACK_HI(limit) | SEG_DESC_P)
-	/* segment 0: unused */
-	.long 0
-	.long 0
-	/* segment 1: 32-bit code */
-	.long FLAT_LO(0, 0xFFFFF)
-	.long FLAT_HI(0, 0xFFFFF) | SEG_DESC_G | SEG_DESC_S | SEG_DESC_32 | SEG_DESC_TYPE(0xA)
-	/* segment 2: 32-bit data */
-	.long FLAT_LO(0, 0xFFFFF)
-	.long FLAT_HI(0, 0xFFFFF) | SEG_DESC_G | SEG_DESC_S | SEG_DESC_32 | SEG_DESC_TYPE(0x2)
-	/* segment 3: 16-bit code (for real mode entry) */
-	.long FLAT_LO(0, 0x0FFFF)
-	.long FLAT_HI(0, 0x0FFFF) | SEG_DESC_S | SEG_DESC_TYPE(0xA)
-	/* segment 4: 64-bit code */
-	.long FLAT_LO(0, 0xFFFFF)
-	.long FLAT_HI(0, 0xFFFFF) | SEG_DESC_G | SEG_DESC_S | SEG_DESC_64 | SEG_DESC_TYPE(0xA)
-#undef FLAT_LO
-#undef FLAT_HI
-initial_gdt_register:
-	.word initial_gdt_register - initial_gdt_table
-	.long initial_gdt_table
-real_mode_idt:
-	.word 0
-	.long 0
-prot_mode_idt:
-	.word 0
-	.long 0
-bios_drive_index:
-	.byte 0
-loading_ss_string:
-	.asciz "Loading 2nd stage ... "
-error_string:
-	.asciz "error!\r\n"
-invalid_string:
-	.asciz "invalid!\r\n"
-done_string:
-	.asciz "done!\r\n"
-
-.macro enter_real_mode
-	data16 call enter_real_mode_helper
-	.code16
-.endm
-
-.macro exit_real_mode
-	data32 call exit_real_mode_helper
-	.code32
-.endm
 
 .code32
-
-.section .text.ss
-ss_stub:
-	/* align stack */
-	and $~3, %esp
-	/* jump to entry */
-	jmp ss_entry
-
-.section .text
-enter_real_mode_helper:
-	push %eax
-	sidt prot_mode_idt
-	ljmp $(3 << 3), $8f
-	8:
-	.code16
-	mov %cr0, %eax
-	and $~CR0_PE, %eax
-	mov %eax, %cr0
-	ljmp $0, $9f
-	9:
-	xor %ax, %ax
-	mov %ax, %ss
+mbr_entry_32a:
+	/* set up segment registers */
+	mov $(2 << 3), %ax
 	mov %ax, %ds
 	mov %ax, %es
-	lidt real_mode_idt
-	pop %eax
-	ret
-	.code32
+	mov %ax, %ss
+	/* jump to C code */
+	jmp mbr_entry_32b
 
-/********
-void bios_call_service(uint8_t service, bios_register_set *set)
-********/
-bios_call_service:
+real_mode_call:
+	data16 lcall $(3 << 3), $real_mode_call_16
+	ret
+
+read_single_sector:
 	/* prologue */
-	push %ebp
-	mov %esp, %ebp
-	push %edi
 	push %esi
-	push %ebx
-	/* setup up the stack */
-	mov 8(%ebp), %esi // %esi in interrupt no.
-	shl $2, %esi
-	add (real_mode_idt+2), %esi
-	pushl (%esi) // cs:ip of handler
-	/* segment registers */
-	mov 12(%ebp), %esi
-	pushw 26(%esi) // es @ -18(%ebp)
-	pushw 24(%esi) // ds @ -20(%ebp)
-	/* assign registers */
-	mov 12(%ebp), %esi
-	mov 0(%esi), %eax
-	mov 4(%esi), %ebx
-	mov 8(%esi), %ecx
-	mov 12(%esi), %edx
-	mov 20(%esi), %edi
-	mov 16(%esi), %esi
-	/* do service call */
-	enter_real_mode
-	mov -20(%bp), %ds
-	mov -18(%bp), %es
-	pushf // flags for iret to restore
-	lcall *-16(%bp)
-	mov %ds, -20(%bp)
-	mov %es, -18(%bp)
-	exit_real_mode
-	/* restore registers */
-	push %edi
-	mov 12(%ebp), %edi
-	mov %eax, 0(%edi)
-	mov %ebx, 4(%edi)
-	mov %ecx, 8(%edi)
-	mov %edx, 12(%edi)
-	mov %esi, 16(%edi)
-	popl 20(%edi)
-	/* restore segments */
-	mov 12(%ebp), %edi
-	popw 24(%edi) // ds
-	popw 26(%edi) // es
-	/* clean up the stack */
-	add $4, %sp
+	/* fill in the packet LBA (arg 1) */
+	mov 8(%esp), %eax
+	mov %eax, disk_access_packet+8
+	/* do bios call */
+	mov $read_single_sector_16, %ax
+	call real_mode_call
+	/* copy it into buffer (arg 2) */
+	mov $scratch_sector, %esi
+	mov 12(%esp), %edi
+	mov $512, %ecx
+	rep movsb
 	/* epilogue */
-	pop %ebx
 	pop %esi
-	pop %edi
-	mov %ebp, %esp
-	pop %ebp
 	ret
 
-/********
-void enter_kernel(uint64_t addr)
-********/
-enter_kernel:
-	/* prepare stack */
-	add $4, %esp // address will be jumped to on return
-	/* enter 64-bit mode */
-	ljmp $(4 << 3), $8f
-	8:
-	/* jump to it! */
-	ret
+.section .data.init
 
-/* EXPORTS */
-.globl bios_call_service
-.globl bios_drive_index
-.globl enter_kernel
-.globl enter_kernel_64
+scratch_sector = mbr_entry_16 - 512
+
+#define GDT_DESC (SEG_DESC_PACK(0, 0xFFFFF) | SEG_DESC_P)
+.align 8
+initial_gdt_table_start = initial_gdt_table_actual - 8
+initial_gdt_table_actual: /* skip null selector to save space */
+	/* segment 1: 32-bit code */
+	.quad GDT_DESC | SEG_DESC_G | SEG_DESC_S | SEG_DESC_32 | SEG_DESC_TYPE(0xA)
+	/* segment 2: 32-bit data */
+	.quad GDT_DESC | SEG_DESC_G | SEG_DESC_S | SEG_DESC_32 | SEG_DESC_TYPE(0x2)
+	/* segment 3: 16-bit data */
+	.quad GDT_DESC | SEG_DESC_S | SEG_DESC_TYPE(0xA)
+initial_gdt_table_end:
+
+.align 4
+disk_access_packet:
+	.byte 16 // size of packet
+	.byte 0  // reserved
+	.word 1  // sectors to read
+	.long scratch_sector  // sector:offset
+	.quad 0  // LBA
+
+.align 2
+initial_gdt_register:
+	.word initial_gdt_table_end - initial_gdt_table_start
+	.long initial_gdt_table_start
+
+.align 1
+bios_drive_index:
+	.byte 0
+
+.globl read_single_sector

@@ -1,3 +1,4 @@
+#if 0
 #define asm __asm__
 
 #include <stdarg.h>
@@ -529,4 +530,18 @@ void ss_entry() {
 	// jump to kernel!
 	extern void enter_kernel(uint64_t addr);
 	enter_kernel(elf_header->e_entry);
+}
+#endif
+
+#include <stdint.h>
+
+#define __init __attribute__((section(".text.init")))
+#define __initdata __attribute__((section(".data.init")))
+
+extern uint8_t mbr_start[];
+extern void read_single_sector(uint32_t lba, void *buf);
+
+void __init mbr_entry_32b() {
+	read_single_sector(1, mbr_start + 512);
+	while (1) {}
 }

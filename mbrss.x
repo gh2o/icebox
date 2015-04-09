@@ -3,8 +3,9 @@ SECTIONS {
 	mbr_start = 0x8000;
 
 	. = mbr_start;
-	.text.mbr : { KEEP(*(.text.mbr)) }
-	.data.mbr : { KEEP(*(.data.mbr)) }
+	.text.entry : { KEEP(*(.text.entry)) }
+	.text.init  : { KEEP(*(.text.init)) }
+	.data.init  : { KEEP(*(.data.init)) }
 
 	. = mbr_start + 0x1BE;
 	.partition_table : {
@@ -24,7 +25,7 @@ SECTIONS {
 	ss_start = mbr_start + 0x200;
 
 	. = ss_start;
-	.ss_stub : { KEEP(*(.text.ss)) }
+	.text.stub2 : { KEEP(*(.text.sub2)) }
 
 	. = ss_start + 16;
 	.ss_meta : {
@@ -42,9 +43,6 @@ SECTIONS {
 	ss_bss_end = .;
 
 	ss_end = .;
-
-	. = ALIGN(16);
-	e820_entries = .;
 
 	/DISCARD/ : { *(.note.gnu.*) }
 
