@@ -124,6 +124,8 @@ read_single_sector:
 	mov 16(%esp), %edi
 	mov $512, %ecx
 	rep movsb
+	/* return error code */
+	mov %ah, %al
 	/* epilogue */
 	pop %edi
 	pop %esi

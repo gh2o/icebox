@@ -539,7 +539,7 @@ void ss_entry() {
 #define __initdata __attribute__((section(".data.init")))
 
 extern uint8_t mbr_start[];
-extern void read_single_sector(uint32_t lba, void *buf);
+extern uint8_t read_single_sector(uint32_t lba, void *buf);
 extern void write_character(char c);
 
 void __init mbr_entry_32b() {
