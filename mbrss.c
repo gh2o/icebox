@@ -543,7 +543,6 @@ extern unsigned char mbr_start[];
 extern unsigned char ss_start, ss_end;
 
 extern unsigned char read_single_sector(unsigned long lba, void *buf);
-extern void write_character(char c);
 extern void write_raw(const char *s);
 
 static const char __initdata msg_info_halting[] = "Halted.\r\n";

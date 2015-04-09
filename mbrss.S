@@ -88,7 +88,7 @@ read_single_sector_16:
 	int $0x13
 	ret
 
-write_chracter_16:
+write_character_16:
 	mov $0x0E, %ah
 	mov %dl, %al
 	mov $0x0F, %bx
@@ -131,29 +131,19 @@ read_single_sector:
 	pop %esi
 	ret
 
-write_character:
-	push %ebx
-	mov 8(%esp), %dl
-	mov $write_chracter_16, %ax
-	call real_mode_call
-	pop %ebx
-	ret
-
 write_raw:
-	push %esi
-	push %esi
-	mov 12(%esp), %esi
+	push %ebx
+	mov 8(%esp), %ecx
 	4:
-	mov (%esi), %al
-	test %al, %al
+	mov (%ecx), %dl
+	test %dl, %dl
 	jz 5f
-	mov %eax, (%esp)
-	call write_character
-	inc %esi
+	mov $write_character_16, %ax
+	call real_mode_call
+	inc %ecx
 	jmp 4b
 	5:
-	pop %esi
-	pop %esi
+	pop %ebx
 	ret
 
 .section .data.init
