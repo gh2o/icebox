@@ -144,7 +144,7 @@ write_character:
 scratch_sector = mbr_entry_16 - 512
 
 #define GDT_DESC (SEG_DESC_PACK(0, 0xFFFFF) | SEG_DESC_P)
-.align 8
+.align 4
 initial_gdt_table_start = initial_gdt_table_actual - 8
 initial_gdt_table_actual: /* skip null selector to save space */
 	/* segment 1: 32-bit code */
