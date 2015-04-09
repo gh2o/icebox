@@ -1,4 +1,5 @@
-CFLAGS_32 := -m32 -nostdlib -ggdb -Os -Wall -std=c99 -ffunction-sections -fdata-sections
+CFLAGS_32 := -m32 -nostdlib -ggdb -Os -Wall -std=c99 -ffunction-sections -fdata-sections \
+	-fomit-frame-pointer -mpreferred-stack-boundary=2
 LDFLAGS_32 := -Wl,-q,--build-id=none -lgcc
 
 RUSTFLAGS := -C debuginfo -C opt-level=2 -C no-stack-check
