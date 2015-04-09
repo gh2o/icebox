@@ -88,6 +88,13 @@ read_single_sector_16:
 	int $0x13
 	ret
 
+write_chracter_16:
+	mov $0x0E, %ah
+	mov %dl, %al
+	mov $0x0F, %bx
+	int $0x10
+	ret
+
 .code32
 mbr_entry_32a:
 	/* set up segment registers */
@@ -120,6 +127,12 @@ read_single_sector:
 	/* epilogue */
 	pop %edi
 	pop %esi
+	ret
+
+write_character:
+	mov 4(%esp), %dl
+	mov $write_chracter_16, %ax
+	call real_mode_call
 	ret
 
 .section .data.init
@@ -156,3 +169,4 @@ bios_drive_index:
 	.byte 0
 
 .globl read_single_sector
+.globl write_character

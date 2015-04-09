@@ -540,6 +540,7 @@ void ss_entry() {
 
 extern uint8_t mbr_start[];
 extern void read_single_sector(uint32_t lba, void *buf);
+extern void write_character(char c);
 
 void __init mbr_entry_32b() {
 	read_single_sector(1, mbr_start + 512);
