@@ -539,32 +539,40 @@ void ss_entry() {
 #define __initdata __attribute__((section(".data.init")))
 
 extern uint8_t mbr_start[];
+extern unsigned char ss_start, ss_end;
 
 extern uint8_t read_single_sector(uint32_t lba, void *buf);
 extern void write_character(char c);
 
-static const char __initdata msg_info_halting[] = "Halted.\n";
-static const char __initdata msg_err_first_sector[] = "Failed to read first sector!\n";
+static const char __initdata msg_info_halting[] = "Halted.\r\n";
+static const char __initdata msg_err_disk_read[] = "Disk read failed!\r\n";
 
-static void __init write_string(const char *s) {
+void mbr_entry_32c();
+
+static void __init write_raw(const char *s) {
 	char c;
-	while ((c = *s++)) {
-		if (c == '\n')
-			write_character('\r');
+	while ((c = *s++))
 		write_character(c);
-	}
 }
 
 static void __init halt_forever() {
-	write_string(msg_info_halting);
+	write_raw(msg_info_halting);
 	__asm__ __volatile__("hlt");
 	__builtin_unreachable();
 }
 
 void __init mbr_entry_32b() {
-	if (read_single_sector(1, mbr_start + 512) != 0) {
-		write_string(msg_err_first_sector);
-		halt_forever();
+	unsigned int ss_bytes = &ss_end - &ss_start;
+	unsigned int ss_sectors = (ss_bytes + 0x1FF) >> 9;
+	for (unsigned int i = 1; i <= ss_sectors; i++) {
+		if (read_single_sector(i, mbr_start + (i << 9)) != 0) {
+			write_raw(msg_err_disk_read);
+			halt_forever();
+		}
 	}
+	mbr_entry_32c();
+}
+
+void mbr_entry_32c() {
 	halt_forever();
 }
