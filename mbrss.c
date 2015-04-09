@@ -537,17 +537,18 @@ void ss_entry() {
 
 #define __init __attribute__((section(".text.init")))
 #define __initdata __attribute__((section(".data.init")))
+#define __noinline __attribute__((noinline))
 
-extern uint8_t mbr_start[];
+extern unsigned char mbr_start[];
 extern unsigned char ss_start, ss_end;
 
-extern uint8_t read_single_sector(uint32_t lba, void *buf);
+extern unsigned char read_single_sector(unsigned long lba, void *buf);
 extern void write_character(char c);
 
 static const char __initdata msg_info_halting[] = "Halted.\r\n";
 static const char __initdata msg_err_disk_read[] = "Disk read failed!\r\n";
 
-void mbr_entry_32c();
+void __noinline mbr_entry_32c();
 
 static void __init write_raw(const char *s) {
 	char c;
@@ -573,6 +574,8 @@ void __init mbr_entry_32b() {
 	mbr_entry_32c();
 }
 
-void mbr_entry_32c() {
+/********* SECOND STAGE **********/
+
+void __noinline mbr_entry_32c() {
 	halt_forever();
 }
