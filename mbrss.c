@@ -544,17 +544,12 @@ extern unsigned char ss_start, ss_end;
 
 extern unsigned char read_single_sector(unsigned long lba, void *buf);
 extern void write_character(char c);
+extern void write_raw(const char *s);
 
 static const char __initdata msg_info_halting[] = "Halted.\r\n";
 static const char __initdata msg_err_disk_read[] = "Disk read failed!\r\n";
 
 void __noinline mbr_entry_32c();
-
-static void __init write_raw(const char *s) {
-	char c;
-	while ((c = *s++))
-		write_character(c);
-}
 
 static void __init halt_forever() {
 	write_raw(msg_info_halting);

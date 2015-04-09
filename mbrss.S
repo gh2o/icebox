@@ -139,6 +139,23 @@ write_character:
 	pop %ebx
 	ret
 
+write_raw:
+	push %esi
+	push %esi
+	mov 12(%esp), %esi
+	4:
+	mov (%esi), %al
+	test %al, %al
+	jz 5f
+	mov %eax, (%esp)
+	call write_character
+	inc %esi
+	jmp 4b
+	5:
+	pop %esi
+	pop %esi
+	ret
+
 .section .data.init
 
 scratch_sector = mbr_entry_16 - 512
@@ -174,3 +191,4 @@ bios_drive_index:
 
 .globl read_single_sector
 .globl write_character
+.globl write_raw
