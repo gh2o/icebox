@@ -132,9 +132,11 @@ read_single_sector:
 	ret
 
 write_character:
-	mov 4(%esp), %dl
+	push %ebx
+	mov 8(%esp), %dl
 	mov $write_chracter_16, %ax
 	call real_mode_call
+	pop %ebx
 	ret
 
 .section .data.init
